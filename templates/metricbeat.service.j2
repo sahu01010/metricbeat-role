@@ -1,0 +1,16 @@
+# templates/metricbeat.service.j2
+
+[Unit]
+Description=Metricbeat
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment="BEAT_NAME=metricbeat"
+Environment="BEAT_PATH=/usr/share/metricbeat"
+ExecStart=/usr/share/metricbeat/metricbeat-7.10.2-linux-arm64/metricbeat -c {{ metricbeat_config_path }} -path.home /usr/share/metricbeat -path.config /etc/metricbeat -path.data /var/lib/metricbeat -path.logs /var/log/metricbeat
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

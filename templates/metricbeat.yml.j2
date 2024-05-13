@@ -1,0 +1,22 @@
+# metricbeat.yml.j2
+
+metricbeat.config.modules:
+  path: /etc/metricbeat/modules.d/*.yml
+  reload.enabled: true
+  reload.period: 10s
+
+output.elasticsearch:
+  hosts: 
+    - "http://{{ elasticsearchkibana_host }}:9200"
+  setup.dashboards:
+    enabled: true
+  kibana:
+    host: "{{ elasticsearchkibana_host }}:5601"
+metricbeat.modules:
+  - module: system
+    metricsets:
+      - cpu
+      - memory
+      - network
+      - process
+    enabled: true

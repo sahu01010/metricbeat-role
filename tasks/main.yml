@@ -1,0 +1,91 @@
+---
+# tasks file for metric
+
+- name: Check if Nginx is installed
+  ansible.builtin.stat:
+    path: /usr/sbin/nginx
+  register: nginx_installed
+
+- name: Install Nginx if not already installed
+  when: nginx_installed.stat.exists == false
+  block:
+
+     - name: Install Nginx
+       package:
+          name: nginx
+          state: present
+
+- name: Start Nginx service
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Check if Metricbeat is installed
+  ansible.builtin.stat:
+    path: /usr/share/metricbeat
+  register: metricbeat_installed
+
+- name: Install Metricbeat if not already installed
+  when: metricbeat_installed.stat.exists == false
+  block:
+
+    - name: Download Metricbeat
+      ansible.builtin.get_url:
+         url: "https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-7.10.2-linux-arm64.tar.gz"
+         dest: "/tmp/metricbeat-7.10.2-linux-arm64.tar.gz"
+
+    - name: Ensure metricbeat directory exists
+      ansible.builtin.file:
+         path: "/usr/share/metricbeat"
+         state: directory
+         owner: ubuntu
+         group: ubuntu
+         mode: "0755"
+
+    - name: Extract Metricbeat archive
+      ansible.builtin.unarchive:
+         src: "/tmp/metricbeat-7.10.2-linux-arm64.tar.gz"
+         dest: "/usr/share/metricbeat"
+         remote_src: yes
+
+    - name: Set permissions for Metricbeat directory
+      ansible.builtin.file:
+         path: "/usr/share/metricbeat"
+         owner: ubuntu
+         group: ubuntu
+         mode: "0755"
+         recurse: yes
+
+    - name: Deploy Metricbeat  systemd service file
+      ansible.builtin.template:
+         src: metricbeat.service.j2
+         dest: /etc/systemd/system/metricbeat.service
+
+    - name: Set permissions for Metricbeat service file
+      ansible.builtin.file:
+         path: /etc/systemd/system/metricbeat.service
+         owner: root
+         group: root
+         mode: "0644"
+
+- name: Set permissions for Metricbeat configuration file
+  ansible.builtin.file:
+    path: /usr/share/metricbeat/metricbeat-7.10.2-linux-arm64/metricbeat.yml
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Configure Metricbeat
+  template:
+    src: metricbeat.yml.j2
+    dest: "{{ metricbeat_config_path }}"
+  notify: Restart Metricbeat
+
+
+- name: Start Metricbeat service
+  ansible.builtin.systemd:
+    name: metricbeat
+    state: started
+    enabled: yes
